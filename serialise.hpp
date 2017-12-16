@@ -975,6 +975,8 @@ struct serialise : serialise_data
         if(data.size() == 0)
             return;
 
+        encode_datastream();
+
         auto myfile = std::fstream(file, std::ios::out | std::ios::binary);
         myfile.write((char*)&data[0], (int)data.size());
         myfile.close();
@@ -1001,6 +1003,43 @@ struct serialise : serialise_data
         data.resize(length);
 
         myfile.read(data.data(), length);
+
+        decode_datastream();
+    }
+
+    void encode_datastream();
+
+    int get_from_char(char* in)
+    {
+        int v;
+
+        memcpy((char*)&v, in, sizeof(v));
+
+        return v;
+    }
+
+    void decode_datastream();
+
+    void handle_data_coding(bool ser)
+    {
+        if(ser)
+        {
+            encode_datastream();
+        }
+        else
+        {
+            decode_datastream();
+        }
+    }
+
+    void dump_contents()
+    {
+        for(auto& i : data)
+        {
+            printf("%x ", (unsigned char)i);
+        }
+
+        std::cout << "\n";
     }
 };
 
