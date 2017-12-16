@@ -64,6 +64,10 @@ struct serialise_data
     std::vector<char> data;
 
     int internal_counter = 0;
+
+    int string_compression_counter = 0;
+    std::map<std::string, int> string_compress;
+    std::map<int, std::string> string_decompress;
 };
 
 struct serialisable;
@@ -638,19 +642,37 @@ struct serialise_helper<std::unordered_set<T>>
     }
 };
 
+#define LOOKUP_STRINGS
+
 template<>
 struct serialise_helper<std::string>
 {
     void add(std::string& v, serialise_data& s)
     {
-        serialise_helper<int32_t> helper;
-        int32_t len = v.size();
-        helper.add(len, s);
+        #ifdef LOOKUP_STRINGS
+        auto it = s.string_compress.find(v);
 
-        for(uint32_t i=0; i<v.size(); i++)
+        if(it != s.string_compress.end())
         {
-            serialise_helper<decltype(v[i])> helper;
-            helper.add(v[i], s);
+            int32_t len = -it->second - 1;
+
+            serialise_helper<int32_t> helper;
+            helper.add(len, s);
+        }
+        else
+        #endif
+        {
+            serialise_helper<int32_t> helper;
+            int32_t len = v.size();
+            helper.add(len, s);
+
+            s.string_compress[v] = s.string_compression_counter++;
+
+            for(uint32_t i=0; i<v.size(); i++)
+            {
+                serialise_helper<decltype(v[i])> helper;
+                helper.add(v[i], s);
+            }
         }
     }
 
@@ -660,28 +682,47 @@ struct serialise_helper<std::string>
         int32_t length;
         helper.get(length, s);
 
-        if(s.internal_counter + length * sizeof(char) > (int)s.data.size())
+        #ifdef LOOKUP_STRINGS
+        if(length < 0)
         {
-            std::cout << "Error, invalid bytefetch st " << length << " " << s.data.size() << std::endl;
+            int lookup_id = (-length) - 1;
 
-            v = std::string();
-
-            return;
+            v = s.string_decompress[lookup_id];
         }
-
-        if(length == 0)
-            return;
-
-        v.reserve(length);
-
-        for(int i=0; i<length; i++)
+        else if(length >= 0)
+        #endif
         {
-            serialise_helper<char> type;
+            ///invalid error case
+            if(s.internal_counter + length * sizeof(char) > (int)s.data.size())
+            {
+                std::cout << "Error, invalid bytefetch st " << length << " " << s.data.size() << std::endl;
 
-            char c;
-            type.get(c, s);
+                v = std::string();
 
-            v.push_back(c);
+                return;
+            }
+
+            ///valid string, 0 length
+            if(length == 0)
+            {
+                s.string_decompress[s.string_compression_counter++] = v;
+
+                return;
+            }
+
+            v.reserve(length);
+
+            for(int i=0; i<length; i++)
+            {
+                serialise_helper<char> type;
+
+                char c;
+                type.get(c, s);
+
+                v.push_back(c);
+            }
+
+            s.string_decompress[s.string_compression_counter++] = v;
         }
     }
 };
