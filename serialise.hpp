@@ -1009,6 +1009,7 @@ struct serialise : serialise_data
 
     void encode_datastream();
 
+    static
     int get_from_char(char* in)
     {
         int v;

@@ -400,9 +400,121 @@ void test_serialisation()
     serialise_data_helper::host_to_id_to_pointer.clear();
 }
 
-void serialise::encode_datastream()
+#include <unordered_map>
+
+#if 0
+struct lookup
+{
+    /*std::vector<std::map<std::string, int>> dat;*/
+
+    uint64_t get_hash(const std::string& val)
+    {
+        uint64_t acc = 0;
+
+        int s = val.size();
+
+        for(int i=0; i < 7 && i < s; i++)
+        {
+            acc += (pow(256, i) * ((unsigned char)val[i]));
+        }
+
+        uint64_t toadd = pow(256, 7);
+
+        acc += toadd * s;
+
+        /*printf("yay\n");
+
+        for(auto& i : val)
+        {
+            printf("%i ", (unsigned char)i);
+        }
+
+        printf("\n");
+
+        std::cout << acc << std::endl;*/
+
+        return acc;
+    }
+
+    std::unordered_map<uint64_t, int> dat;
+    std::map<std::string, int> degenerate;
+
+    lookup()
+    {
+        /*dat.resize(256);
+
+        for(int i=0; i < 256; i++)
+        {
+            dat[i][std::string(1, i)] = i;
+        }*/
+
+        for(int i=0; i < 256; i++)
+        {
+            (*this)[std::string(1, i)] = i;
+        }
+    }
+
+    int reg_hitrate = 0;
+    int reg_missrate = 0;
+
+    int max_size = 0;
+
+    bool count(const std::string& val)
+    {
+        /*printf("yay\n");
+
+        for(auto& i : val)
+        {
+            printf("%i ", (unsigned char)i);
+        }
+
+        printf("t %i %i \n", dat.size(), dat[(unsigned char)val[0]].size());
+
+        printf("boo\n");*/
+
+        if(val.size() >= 7)
+        {
+            max_size = std::max(max_size, (int)val.size());
+
+            reg_missrate++;
+            return degenerate.count(val) > 0;
+        }
+
+        reg_hitrate++;
+
+        return dat.count(get_hash(val)) > 0;
+
+        //return (*this)[val]. > 0;
+
+        //return dat[(unsigned char)val[0]].count(val) > 0;
+    }
+
+    int& operator[](const std::string& val)
+    {
+        if(val.size() >= 7)
+        {
+            reg_missrate++;
+            return degenerate[val];
+        }
+
+        reg_hitrate++;
+
+        return dat[get_hash(val)];
+
+        //return dat[(unsigned char)val[0]][val];
+    };
+
+    ~lookup()
+    {
+        printf("hr %i %i %i\n", reg_hitrate, reg_missrate, max_size);
+    }
+};
+#endif
+
+std::vector<int> encode_partial(int start, int length, const std::vector<char>& data)
 {
     std::map<std::string, int> dictionary;
+
     int dictSize = 256;
 
     for (int i = 0; i < 256; i++)
@@ -411,13 +523,23 @@ void serialise::encode_datastream()
     std::vector<int> out;
     std::string w;
 
-    for(int i=0; i < data.size(); i++)
+    /*int splits = 4;
+
+    int max_size = data.size() / splits;
+
+    int csize = 0;*/
+
+    ///hmm, lowering it to 7 makes it compress in a couple of seconds
+    ///but reduces data compression quite significantly
+    int max_length = 50;
+
+    for(int i=start; i < start + length && i < data.size(); i++)
     {
         char c = data[i];
 
         std::string wc = w + c;
 
-        if(dictionary.count(wc))
+        if(wc.size() <= max_length && dictionary.count(wc))
         {
             w = std::move(wc);
         }
@@ -426,6 +548,7 @@ void serialise::encode_datastream()
             out.push_back(dictionary[w]);
 
             dictionary[wc] = dictSize++;
+
             w = std::string(1, c);
         }
     }
@@ -433,6 +556,39 @@ void serialise::encode_datastream()
     if(!w.empty())
     {
         out.push_back(dictionary[w]);
+    }
+
+    return out;
+}
+
+///note to future james, optimise
+///maybe try limiting max chunk size so we can do direct lookup?
+///parallelise this and split into chunks
+///should still compress relatively well
+///make multiple serialisation streams and then mash together
+void serialise::encode_datastream()
+{
+    sf::Clock clk;
+
+    ///720k entries
+
+
+    //std::cout << "ENTRIES " << dictionary.size() << std::endl;
+
+    //auto out = encode_partial(0, data.size(), data);
+
+    std::vector<int> out;
+
+    int splits = 4;
+
+    int max_size = ceil((double)data.size() / splits);
+
+    for(int i=0; i < splits; i++)
+    {
+        auto found = encode_partial(i * max_size, max_size, data);
+
+        out.insert(out.end(), found.begin(), found.end());
+        out.push_back(-1);
     }
 
     data.clear();
@@ -452,9 +608,11 @@ void serialise::encode_datastream()
 
         memcpy(&data[start], dat, sizeof(int));
     }
+
+    std::cout << clk.getElapsedTime().asMicroseconds() / 1000. / 1000. << " time" << std::endl;
 }
 
-void serialise::decode_datastream()
+std::string decode_partial(std::vector<char>& data, int& in_out_end)
 {
     int dictSize = 256;
     std::map<int,std::string> dictionary;
@@ -462,17 +620,9 @@ void serialise::decode_datastream()
     for (int i = 0; i < 256; i++)
         dictionary[i] = std::string(1, i);
 
-    //int* data_begin = (int*)&data[0];
-    //int* data_end = ((int*)&data.back()) + 1;
+    int data_offset = in_out_end;
 
-    //char* data_ptr = &data[0];
-
-    int data_offset = 0;
-
-    //std::cout << data.size() % 4 << std::endl;
-
-
-    std::string w(1, get_from_char(&data[data_offset]));
+    std::string w(1, serialise::get_from_char(&data[data_offset]));
 
     data_offset+=4;
 
@@ -482,7 +632,25 @@ void serialise::decode_datastream()
 
     for ( ; data_offset < data.size(); data_offset+=4)
     {
-        int k = get_from_char(&data[data_offset]);
+        int k = serialise::get_from_char(&data[data_offset]);
+
+        if(k == -1)
+        {
+            /*dictionary.clear();
+
+            for (int i = 0; i < 256; i++)
+                dictionary[i] = std::string(1, i);
+
+            w = std::string(1, get_from_char(&data[data_offset + 4]));
+            data_offset += 4;
+
+            std::cout << "hello\n";
+            continue;*/
+
+            in_out_end = data_offset + 4;
+
+            return result;
+        }
 
         if (dictionary.count(k))
             entry = dictionary[k];
@@ -496,6 +664,22 @@ void serialise::decode_datastream()
         dictionary[dictSize++] = w + entry[0];
 
         w = entry;
+    }
+
+    return result;
+}
+
+void serialise::decode_datastream()
+{
+    std::string result;
+
+    int splits = 4;
+
+    int cur_start = 0;
+
+    for(int i=0; i < splits; i++)
+    {
+        result += decode_partial(data, cur_start);
     }
 
     data.clear();
