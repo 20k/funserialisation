@@ -493,7 +493,7 @@ void serialise::encode_datastream()
         memcpy(&data[start], dat, sizeof(int));
     }
 
-    std::cout << clk.getElapsedTime().asMicroseconds() / 1000. / 1000. << " time" << std::endl;
+    //std::cout << clk.getElapsedTime().asMicroseconds() / 1000. / 1000. << " time" << std::endl;
 }
 
 std::string decode_partial(std::vector<char>& data, int& in_out_end)
@@ -530,7 +530,9 @@ std::string decode_partial(std::vector<char>& data, int& in_out_end)
         else if (k == dictSize)
             entry = w + w[0];
         else
-            throw "Did not find k";
+        {
+            std::cout << "ERR ERR ERR\n";
+        }
 
         result += entry;
 
