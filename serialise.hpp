@@ -1043,6 +1043,9 @@ struct serialise : serialise_data
 
         std::cout << "\n";
     }
+
+    static
+    void sleep_thread_pool();
 };
 
 void test_serialisation();

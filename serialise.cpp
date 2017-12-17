@@ -377,11 +377,11 @@ void test_serialisation()
         ser.handle_serialise(val2, true);
         ser.handle_serialise(val3, true);
 
-        //ser.dump_contents();
+        ser.dump_contents();
         ser.handle_data_coding(true);
-        //ser.dump_contents();
+        ser.dump_contents();
         ser.handle_data_coding(false);
-        //ser.dump_contents();
+        ser.dump_contents();
 
         int nv1 = 32;
         int nv2 = 43;
@@ -447,6 +447,159 @@ std::vector<int> encode_partial(int start, int length, const std::vector<char>& 
     return out;
 }
 
+///client uses thread pool, server uses manual threads
+///as it never encodes data
+#ifdef NET_CLIENT
+#define THREAD_POOL
+#endif
+
+#ifdef THREAD_POOL
+struct tiny_thread_pool
+{
+    std::thread threads[4];
+    volatile int has_data[4] = {0};
+
+    struct exec_data
+    {
+        serialise* s;
+        std::vector<std::vector<int>>* partial_data;
+        std::vector<char> (*data);
+        int max_size = 0;
+
+        void operator = (const exec_data& a) volatile
+        {
+            s = a.s;
+            partial_data = a.partial_data;
+            data = a.data;
+            max_size = a.max_size;
+        }
+
+        void operator = (volatile exec_data& a) volatile
+        {
+            s = a.s;
+            partial_data = a.partial_data;
+            data = a.data;
+            max_size = a.max_size;
+        }
+
+        void operator = (volatile exec_data a)
+        {
+            s = a.s;
+            partial_data = a.partial_data;
+            data = a.data;
+            max_size = a.max_size;
+        }
+    };
+
+    volatile exec_data datas[4];
+
+    void assign_work(const exec_data& d1)
+    {
+        for(int i=0; i < 4; i++)
+        {
+            datas[i] = d1;
+        }
+
+        for(int i=0; i < 4; i++)
+        {
+            has_data[i] = 1;
+        }
+    }
+
+    void thread_function(int id)
+    {
+        while(1)
+        {
+            int value = has_data[id];
+
+            if(value == 1)
+            {
+                volatile exec_data& dat = datas[id];
+
+                (*dat.partial_data)[id] = encode_partial(id * dat.max_size, dat.max_size, (*dat.data));
+
+                has_data[id] = 0;
+            }
+
+            if(value == -1)
+            {
+                return;
+            }
+
+            if(value == -2)
+            {
+                sf::sleep(sf::milliseconds(1));
+                has_data[id] = 0;
+            }
+
+            std::this_thread::yield();
+        }
+    }
+
+    tiny_thread_pool()
+    {
+        for(int i=0; i < 4; i++)
+        {
+            threads[i] = std::thread(thread_function, this, i);
+        }
+    }
+
+    ~tiny_thread_pool()
+    {
+        for(int i=0; i<4; i++)
+        {
+            has_data[i] = -1;
+
+            threads[i].join();
+        }
+    }
+
+    void sleep()
+    {
+        for(int i=0; i < 4; i++)
+        {
+            has_data[i] = -2;
+        }
+    }
+
+    void wait()
+    {
+        bool finished = false;
+
+        while(!finished)
+        {
+            bool any_going = false;
+
+            for(int i=0; i < 4; i++)
+            {
+                if(has_data[i] == 1)
+                {
+                    any_going = true;
+                    break;
+                }
+            }
+
+            if(!any_going)
+                finished = true;
+            else
+                std::this_thread::yield();
+        }
+
+    }
+};
+#endif
+
+#ifdef THREAD_POOL
+inline tiny_thread_pool thread_pool;
+#endif
+
+void serialise::sleep_thread_pool()
+{
+    #ifdef THREAD_POOL
+    thread_pool.sleep();
+    #endif
+}
+
 void serialise::encode_datastream()
 {
     sf::Clock clk;
@@ -457,18 +610,43 @@ void serialise::encode_datastream()
     constexpr int splits = 4;
     int max_size = ceil((double)data.size() / splits);
 
-    std::thread threads[splits];
+    #ifdef NET_SERVER
+    #define MANUAL_THREADS
+    #endif
 
-    std::vector<int> partial_data[splits];
+    #ifdef MANUAL_THREADS
+    std::thread threads[splits];
+    #endif
+
+    std::vector<std::vector<int>> partial_data;
+    partial_data.resize(splits);
 
     for(int i=0; i < splits; i++)
     {
+        #ifdef MANUAL_THREADS
         threads[i] = std::thread([i, this, &partial_data, max_size](){partial_data[i] = encode_partial(i * max_size, max_size, data);});
+        #endif // MANUAL_THREADS
+
+        #ifdef THREAD_POOL
+        tiny_thread_pool::exec_data dat;
+        dat.max_size = max_size;
+        dat.s = this;
+        dat.partial_data = &partial_data;
+        dat.data = &data;
+
+        thread_pool.assign_work(dat);
+        #endif
     }
 
     for(int i=0; i < splits; i++)
     {
+        #ifdef MANUAL_THREADS
         threads[i].join();
+        #endif
+
+        #ifdef THREAD_POOL
+        thread_pool.wait();
+        #endif
     }
 
     for(int i=0; i < splits; i++)
