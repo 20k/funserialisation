@@ -970,6 +970,7 @@ struct serialise : serialise_data
     ///and disk mode. Ie two separate tables
     void save(const std::string& file)
     {
+        ///why are we clearing on save? All this will do is break multiplayer?
         serialise_data_helper::host_to_id_to_pointer.clear();
 
         if(data.size() == 0)

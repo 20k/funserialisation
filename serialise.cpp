@@ -1,6 +1,7 @@
 #include "serialise.hpp"
 
 #include <assert.h>
+#include <thread>
 
 uint64_t serialisable::gserialise_id;
 
@@ -400,117 +401,6 @@ void test_serialisation()
     serialise_data_helper::host_to_id_to_pointer.clear();
 }
 
-#include <unordered_map>
-
-#if 0
-struct lookup
-{
-    /*std::vector<std::map<std::string, int>> dat;*/
-
-    uint64_t get_hash(const std::string& val)
-    {
-        uint64_t acc = 0;
-
-        int s = val.size();
-
-        for(int i=0; i < 7 && i < s; i++)
-        {
-            acc += (pow(256, i) * ((unsigned char)val[i]));
-        }
-
-        uint64_t toadd = pow(256, 7);
-
-        acc += toadd * s;
-
-        /*printf("yay\n");
-
-        for(auto& i : val)
-        {
-            printf("%i ", (unsigned char)i);
-        }
-
-        printf("\n");
-
-        std::cout << acc << std::endl;*/
-
-        return acc;
-    }
-
-    std::unordered_map<uint64_t, int> dat;
-    std::map<std::string, int> degenerate;
-
-    lookup()
-    {
-        /*dat.resize(256);
-
-        for(int i=0; i < 256; i++)
-        {
-            dat[i][std::string(1, i)] = i;
-        }*/
-
-        for(int i=0; i < 256; i++)
-        {
-            (*this)[std::string(1, i)] = i;
-        }
-    }
-
-    int reg_hitrate = 0;
-    int reg_missrate = 0;
-
-    int max_size = 0;
-
-    bool count(const std::string& val)
-    {
-        /*printf("yay\n");
-
-        for(auto& i : val)
-        {
-            printf("%i ", (unsigned char)i);
-        }
-
-        printf("t %i %i \n", dat.size(), dat[(unsigned char)val[0]].size());
-
-        printf("boo\n");*/
-
-        if(val.size() >= 7)
-        {
-            max_size = std::max(max_size, (int)val.size());
-
-            reg_missrate++;
-            return degenerate.count(val) > 0;
-        }
-
-        reg_hitrate++;
-
-        return dat.count(get_hash(val)) > 0;
-
-        //return (*this)[val]. > 0;
-
-        //return dat[(unsigned char)val[0]].count(val) > 0;
-    }
-
-    int& operator[](const std::string& val)
-    {
-        if(val.size() >= 7)
-        {
-            reg_missrate++;
-            return degenerate[val];
-        }
-
-        reg_hitrate++;
-
-        return dat[get_hash(val)];
-
-        //return dat[(unsigned char)val[0]][val];
-    };
-
-    ~lookup()
-    {
-        printf("hr %i %i %i\n", reg_hitrate, reg_missrate, max_size);
-    }
-};
-#endif
-
 std::vector<int> encode_partial(int start, int length, const std::vector<char>& data)
 {
     std::map<std::string, int> dictionary;
@@ -522,12 +412,6 @@ std::vector<int> encode_partial(int start, int length, const std::vector<char>& 
 
     std::vector<int> out;
     std::string w;
-
-    /*int splits = 4;
-
-    int max_size = data.size() / splits;
-
-    int csize = 0;*/
 
     ///hmm, lowering it to 7 makes it compress in a couple of seconds
     ///but reduces data compression quite significantly
@@ -558,37 +442,42 @@ std::vector<int> encode_partial(int start, int length, const std::vector<char>& 
         out.push_back(dictionary[w]);
     }
 
+    out.push_back(-1);
+
     return out;
 }
 
-///note to future james, optimise
-///maybe try limiting max chunk size so we can do direct lookup?
-///parallelise this and split into chunks
-///should still compress relatively well
-///make multiple serialisation streams and then mash together
 void serialise::encode_datastream()
 {
     sf::Clock clk;
 
     ///720k entries
-
-
-    //std::cout << "ENTRIES " << dictionary.size() << std::endl;
-
-    //auto out = encode_partial(0, data.size(), data);
-
     std::vector<int> out;
 
-    int splits = 4;
-
+    constexpr int splits = 4;
     int max_size = ceil((double)data.size() / splits);
+
+    std::thread threads[splits];
+
+    std::vector<int> partial_data[splits];
 
     for(int i=0; i < splits; i++)
     {
-        auto found = encode_partial(i * max_size, max_size, data);
+        threads[i] = std::thread([i, this, &partial_data, max_size](){partial_data[i] = encode_partial(i * max_size, max_size, data);});
+    }
+
+    for(int i=0; i < splits; i++)
+    {
+        threads[i].join();
+    }
+
+    for(int i=0; i < splits; i++)
+    {
+        //auto found = encode_partial(i * max_size, max_size, data);
+
+        auto found = partial_data[i];
 
         out.insert(out.end(), found.begin(), found.end());
-        out.push_back(-1);
     }
 
     data.clear();
@@ -596,11 +485,6 @@ void serialise::encode_datastream()
     for(int i : out)
     {
         char* dat = (char*)&i;
-
-        /*for(int kk=0; kk < sizeof(int); kk++)
-        {
-            data.push_back(dat[kk]);
-        }*/
 
         int start = data.size();
 
@@ -636,17 +520,6 @@ std::string decode_partial(std::vector<char>& data, int& in_out_end)
 
         if(k == -1)
         {
-            /*dictionary.clear();
-
-            for (int i = 0; i < 256; i++)
-                dictionary[i] = std::string(1, i);
-
-            w = std::string(1, get_from_char(&data[data_offset + 4]));
-            data_offset += 4;
-
-            std::cout << "hello\n";
-            continue;*/
-
             in_out_end = data_offset + 4;
 
             return result;
@@ -657,7 +530,7 @@ std::string decode_partial(std::vector<char>& data, int& in_out_end)
         else if (k == dictSize)
             entry = w + w[0];
         else
-            throw "Bad compressed k";
+            throw "Did not find k";
 
         result += entry;
 
@@ -693,6 +566,4 @@ void serialise::decode_datastream()
             data.push_back(ptr[kk]);
         }
     }
-
-    //return result;
 }
