@@ -377,11 +377,11 @@ void test_serialisation()
         ser.handle_serialise(val2, true);
         ser.handle_serialise(val3, true);
 
-        ser.dump_contents();
+        //ser.dump_contents();
         ser.handle_data_coding(true);
-        ser.dump_contents();
+        //ser.dump_contents();
         ser.handle_data_coding(false);
-        ser.dump_contents();
+        //ser.dump_contents();
 
         int nv1 = 32;
         int nv2 = 43;
