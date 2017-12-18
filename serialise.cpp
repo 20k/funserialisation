@@ -461,14 +461,12 @@ struct tiny_thread_pool
 
     struct exec_data
     {
-        serialise* s;
         std::vector<std::vector<int>>* partial_data;
         std::vector<char> (*data);
         int max_size = 0;
 
         void operator = (const exec_data& a) volatile
         {
-            s = a.s;
             partial_data = a.partial_data;
             data = a.data;
             max_size = a.max_size;
@@ -476,7 +474,6 @@ struct tiny_thread_pool
 
         void operator = (volatile exec_data& a) volatile
         {
-            s = a.s;
             partial_data = a.partial_data;
             data = a.data;
             max_size = a.max_size;
@@ -484,7 +481,6 @@ struct tiny_thread_pool
 
         void operator = (volatile exec_data a)
         {
-            s = a.s;
             partial_data = a.partial_data;
             data = a.data;
             max_size = a.max_size;
@@ -495,6 +491,8 @@ struct tiny_thread_pool
 
     void assign_work(const exec_data& d1)
     {
+        wait();
+
         for(int i=0; i < 4; i++)
         {
             datas[i] = d1;
@@ -572,7 +570,7 @@ struct tiny_thread_pool
 
             for(int i=0; i < 4; i++)
             {
-                if(has_data[i] == 1)
+                if(has_data[i] != 0)
                 {
                     any_going = true;
                     break;
@@ -602,6 +600,8 @@ void serialise::sleep_thread_pool()
 
 void serialise::encode_datastream()
 {
+    //return;
+
     sf::Clock clk;
 
     ///720k entries
@@ -626,28 +626,27 @@ void serialise::encode_datastream()
         #ifdef MANUAL_THREADS
         threads[i] = std::thread([i, this, &partial_data, max_size](){partial_data[i] = encode_partial(i * max_size, max_size, data);});
         #endif // MANUAL_THREADS
-
-        #ifdef THREAD_POOL
-        tiny_thread_pool::exec_data dat;
-        dat.max_size = max_size;
-        dat.s = this;
-        dat.partial_data = &partial_data;
-        dat.data = &data;
-
-        thread_pool.assign_work(dat);
-        #endif
     }
+
+    #ifdef THREAD_POOL
+    tiny_thread_pool::exec_data dat;
+    dat.max_size = max_size;
+    dat.partial_data = &partial_data;
+    dat.data = &data;
+
+    thread_pool.assign_work(dat);
+    #endif
 
     for(int i=0; i < splits; i++)
     {
         #ifdef MANUAL_THREADS
         threads[i].join();
         #endif
-
-        #ifdef THREAD_POOL
-        thread_pool.wait();
-        #endif
     }
+
+    #ifdef THREAD_POOL
+    thread_pool.wait();
+    #endif
 
     for(int i=0; i < splits; i++)
     {
@@ -724,6 +723,8 @@ std::string decode_partial(std::vector<char>& data, int& in_out_end)
 
 void serialise::decode_datastream()
 {
+    //return;
+
     std::string result;
 
     int splits = 4;
