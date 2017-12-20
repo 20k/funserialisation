@@ -449,7 +449,7 @@ std::vector<int> encode_partial(int start, int length, const std::vector<char>& 
 
 ///client uses thread pool, server uses manual threads
 ///as it never encodes data
-#ifdef NET_CLIENT
+#if defined(NET_CLIENT) && !defined(NO_COMPRESSION)
 #define THREAD_POOL
 #endif
 
@@ -600,7 +600,9 @@ void serialise::sleep_thread_pool()
 
 void serialise::encode_datastream()
 {
-    //return;
+    #ifdef NO_COMPRESSION
+    return;
+    #endif // NO_COMPRESSION
 
     sf::Clock clk;
 
@@ -610,7 +612,7 @@ void serialise::encode_datastream()
     constexpr int splits = 4;
     int max_size = ceil((double)data.size() / splits);
 
-    #ifdef NET_SERVER
+    #if defined(NET_SERVER) && !defined(NO_COMPRESSION)
     #define MANUAL_THREADS
     #endif
 
@@ -723,7 +725,9 @@ std::string decode_partial(std::vector<char>& data, int& in_out_end)
 
 void serialise::decode_datastream()
 {
-    //return;
+    #ifdef NO_COMPRESSION
+    return;
+    #endif // NO_COMPRESSION
 
     std::string result;
 
