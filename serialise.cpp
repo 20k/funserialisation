@@ -748,3 +748,9 @@ void serialise::decode_datastream()
         }
     }
 }
+
+#ifndef NET_CLIENT
+#ifndef NET_SERVER
+#error "Must define one of the above"
+#endif
+#endif // NET_CLIENT
