@@ -449,7 +449,7 @@ std::vector<int> encode_partial(int start, int length, const std::vector<char>& 
 
 ///client uses thread pool, server uses manual threads
 ///as it never encodes data
-#if defined(NET_CLIENT) && !defined(NO_COMPRESSION)
+#if defined(NET_CLIENT) && !defined(NO_COMPRESSION) && !defined(SINGLE_THREADED)
 #define THREAD_POOL
 #endif
 
@@ -598,6 +598,8 @@ void serialise::sleep_thread_pool()
     #endif
 }
 
+#define SPLITS 4
+
 void serialise::encode_datastream()
 {
     #ifdef NO_COMPRESSION
@@ -609,10 +611,10 @@ void serialise::encode_datastream()
     ///720k entries
     std::vector<int> out;
 
-    constexpr int splits = 4;
+    constexpr int splits = SPLITS;
     int max_size = ceil((double)data.size() / splits);
 
-    #if defined(NET_SERVER) && !defined(NO_COMPRESSION)
+    #if defined(NET_SERVER) && !defined(NO_COMPRESSION) && !defined(SINGLE_THREADED)
     #define MANUAL_THREADS
     #endif
 
@@ -652,9 +654,11 @@ void serialise::encode_datastream()
 
     for(int i=0; i < splits; i++)
     {
-        //auto found = encode_partial(i * max_size, max_size, data);
-
+        #ifdef SINGLE_THREADED
+        auto found = encode_partial(i * max_size, max_size, data);
+        #else
         auto found = partial_data[i];
+        #endif // SINGLE_THREADED
 
         out.insert(out.end(), found.begin(), found.end());
     }
@@ -731,7 +735,7 @@ void serialise::decode_datastream()
 
     std::string result;
 
-    int splits = 4;
+    int splits = SPLITS;
 
     int cur_start = 0;
 
