@@ -126,10 +126,19 @@ struct serialisable
 
     }
 
+    static void reset_network_state()
+    {
+        serialise_data_helper::host_to_id_to_pointer.clear();
+
+        explicit_serialise_id = 0;
+    }
+
     void explicit_register()
     {
-        host_id = -2;
+        host_id = -3;
         serialise_id = explicit_serialise_id++;
+
+        serialise_data_helper::host_to_id_to_pointer[host_id][serialise_id] = this;
     }
 
     ///the reason why we crash at outro is, i believe, static initialisation fiasco
