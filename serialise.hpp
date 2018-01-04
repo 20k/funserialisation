@@ -163,7 +163,7 @@ void lowest_add(T& v, serialise& s, std::vector<char>& data)
 
     data.resize(ds + sizeof(T));
 
-    for(int i=0; i<sizeof(T); i++)
+    for(int i=0; i<(int)sizeof(T); i++)
     {
         data[ds + i] = pv[i];
     }
@@ -773,7 +773,7 @@ struct serialise_helper<sf::Texture>
     void add(sf::Texture& v, serialise_data& s)
     {
         serialise_helper<vec2i> helper;
-        vec2i dim = {v.getSize().x, v.getSize().y};
+        vec2i dim = {(int)v.getSize().x, (int)v.getSize().y};
         helper.add(dim, s);
 
         if(dim.x() == 0 || dim.y() == 0)
