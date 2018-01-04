@@ -242,7 +242,6 @@ struct serialise_helper<T*>
             return;
         }
 
-
         if(v->host_id == -1)
         {
             v->host_id = s.default_owner;
