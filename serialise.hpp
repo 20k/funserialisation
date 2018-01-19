@@ -454,6 +454,41 @@ struct serialise_helper<std::vector<T>>
     }
 };
 
+template<typename T, unsigned long long N>
+struct serialise_helper<std::array<T, N>>
+{
+    void add(std::array<T, N>& v, serialise_data& s)
+    {
+        serialise_helper<int32_t> helper;
+
+        int32_t len = v.size();
+        helper.add(len, s);
+
+        for(uint32_t i=0; i<v.size(); i++)
+        {
+            serialise_helper<T> helper;
+            helper.add(v[i], s);
+        }
+    }
+
+    void get(std::array<T, N>& v, serialise_data& s)
+    {
+        serialise_helper<int32_t> helper;
+        int32_t length;
+        helper.get(length, s);
+
+        if(length == 0)
+            return;
+
+        for(int i=0; i<length; i++)
+        {
+            serialise_helper<T> type;
+
+            type.get(v[i], s);
+        }
+    }
+};
+
 template<typename T>
 struct serialise_helper<std::deque<T>>
 {
