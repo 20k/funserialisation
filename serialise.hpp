@@ -111,6 +111,7 @@ struct serialisable
     bool force_send = false;
 
     static inline serialise_data_type explicit_serialise_id = 0;
+    static inline serialise_data_type never_clear_serialise_id = 0;
 
     //bool owned = true;
 
@@ -118,6 +119,8 @@ struct serialisable
     {
         dirty = 1;
     }
+
+    #define NEVER_CLEAR_ID -4
 
     bool handled_by_client = true;
 
@@ -128,7 +131,12 @@ struct serialisable
 
     static void reset_network_state()
     {
+        ///save never clears
+        auto backup = serialise_data_helper::host_to_id_to_pointer[NEVER_CLEAR_ID];
+
         serialise_data_helper::host_to_id_to_pointer.clear();
+
+        serialise_data_helper::host_to_id_to_pointer[NEVER_CLEAR_ID] = backup;
 
         explicit_serialise_id = 0;
     }
@@ -137,6 +145,14 @@ struct serialisable
     {
         host_id = -3;
         serialise_id = explicit_serialise_id++;
+
+        serialise_data_helper::host_to_id_to_pointer[host_id][serialise_id] = this;
+    }
+
+    void explicit_register_never_clear()
+    {
+        host_id = NEVER_CLEAR_ID;
+        serialise_id = never_clear_serialise_id++;
 
         serialise_data_helper::host_to_id_to_pointer[host_id][serialise_id] = this;
     }
