@@ -790,13 +790,13 @@ struct serialise_helper<std::string>
 };
 
 template<typename T>
-struct serialise_helper<std::optional<T>>
+struct serialise_helper<std::experimental::optional<T>>
 {
-    void add(std::optional<T>& v, serialise_data& s)
+    void add(std::experimental::optional<T>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
 
-        int32_t has = v.has_value();
+        int32_t has = (bool)v;
 
         helper.add(has, s);
 
@@ -808,7 +808,7 @@ struct serialise_helper<std::optional<T>>
         }
     }
 
-    void get(std::optional<T>& v, serialise_data& s)
+    void get(std::experimental::optional<T>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
 
