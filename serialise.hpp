@@ -18,8 +18,7 @@
 #include <vec/vec.hpp>
 #include <deque>
 #include <typeinfo>
-
-#include <experimental/optional>
+#include <optional>
 
 using serialise_host_type = int32_t;
 using serialise_owner_type = int32_t;
@@ -790,13 +789,13 @@ struct serialise_helper<std::string>
 };
 
 template<typename T>
-struct serialise_helper<std::experimental::optional<T>>
+struct serialise_helper<std::optional<T>>
 {
-    void add(std::experimental::optional<T>& v, serialise_data& s)
+    void add(std::optional<T>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
 
-        int32_t has = (bool)v;
+        int32_t has = v.has_value();
 
         helper.add(has, s);
 
@@ -808,7 +807,7 @@ struct serialise_helper<std::experimental::optional<T>>
         }
     }
 
-    void get(std::experimental::optional<T>& v, serialise_data& s)
+    void get(std::optional<T>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
 
