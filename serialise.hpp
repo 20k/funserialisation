@@ -12,7 +12,7 @@
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
-#ifdef NO_SFML
+#ifndef NO_SFML
 #include <SFML/Graphics.hpp>
 #endif
 #include <vec/vec.hpp>
@@ -828,7 +828,7 @@ struct serialise_helper<std::optional<T>>
     }
 };
 
-#ifdef NO_SFML
+#ifndef NO_SFML
 template<>
 struct serialise_helper<sf::Texture>
 {
