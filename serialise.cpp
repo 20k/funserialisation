@@ -340,29 +340,29 @@ void test_serialisation()
     }
 
     {
-        std::optional<int> test;
+        std::experimental::optional<int> test;
 
         serialise ser;
         ser.handle_serialise(test, true);
 
-        std::optional<int> recv;
+        std::experimental::optional<int> recv;
 
         ser.handle_serialise(recv, false);
 
-        assert(recv.has_value() == false);
+        assert((bool)recv == false);
     }
 
     {
-        std::optional<int> test = 12;
+        std::experimental::optional<int> test = 12;
 
         serialise ser;
         ser.handle_serialise(test, true);
 
-        std::optional<int> recv;
+        std::experimental::optional<int> recv;
 
         ser.handle_serialise(recv, false);
 
-        assert(recv.has_value() == true);
+        assert((bool)recv == true);
 
         assert(*recv == 12);
     }
