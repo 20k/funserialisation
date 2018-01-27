@@ -606,7 +606,7 @@ void serialise::encode_datastream()
     return;
     #endif // NO_COMPRESSION
 
-    sf::Clock clk;
+    //sf::Clock clk;
 
     ///720k entries
     std::vector<int> out;
