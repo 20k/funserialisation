@@ -12,6 +12,7 @@
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
+#include <cstring>
 #ifndef NO_SFML
 #include <SFML/Graphics.hpp>
 #endif
