@@ -156,7 +156,7 @@ void test_serialisation()
 
         assert(found.size() == objects.size());
 
-        for(int i=0; i<found.size(); i++)
+        for(int i=0; i<(int)found.size(); i++)
         {
             assert(objects[i].v1 == found[i].v1);
             assert(objects[i].v2 == found[i].v2);
@@ -179,7 +179,7 @@ void test_serialisation()
 
         assert(found.size() == objects.size());
 
-        for(int i=0; i<found.size(); i++)
+        for(int i=0; i<(int)found.size(); i++)
         {
             assert(objects[i].v1 == found[i].v1);
             assert(objects[i].v2 == found[i].v2);
@@ -208,7 +208,7 @@ void test_serialisation()
 
         assert(found.size() == objects.size());
 
-        for(int i=0; i<found.size(); i++)
+        for(int i=0; i<(int)found.size(); i++)
         {
             assert(objects[i]->v1 == found[i]->v1);
             assert(objects[i]->v2 == found[i]->v2);
@@ -417,13 +417,13 @@ std::vector<int> encode_partial(int start, int length, const std::vector<char>& 
     ///but reduces data compression quite significantly
     int max_length = 50;
 
-    for(int i=start; i < start + length && i < data.size(); i++)
+    for(int i=start; i < start + length && i < (int)data.size(); i++)
     {
         char c = data[i];
 
         std::string wc = w + c;
 
-        if(wc.size() <= max_length && dictionary.count(wc))
+        if((int)wc.size() <= max_length && dictionary.count(wc))
         {
             w = std::move(wc);
         }
@@ -697,7 +697,7 @@ std::string decode_partial(std::vector<char>& data, int& in_out_end)
 
     std::string entry;
 
-    for ( ; data_offset < data.size(); data_offset+=4)
+    for ( ; data_offset < (int)data.size(); data_offset+=4)
     {
         int k = serialise::get_from_char(&data[data_offset]);
 
@@ -750,7 +750,7 @@ void serialise::decode_datastream()
     {
         char* ptr = (char*)&i;
 
-        for(int kk=0; kk < sizeof(i); kk++)
+        for(int kk=0; kk < (int)sizeof(i); kk++)
         {
             data.push_back(ptr[kk]);
         }

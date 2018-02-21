@@ -755,7 +755,7 @@ struct serialise_helper<std::string>
         #endif
         {
             ///invalid error case
-            if(s.internal_counter + length * sizeof(char) > (int)s.data.size())
+            if(s.internal_counter + length * (int)sizeof(char) > (int)s.data.size())
             {
                 std::cout << "Error, invalid bytefetch st " << length << " " << s.data.size() << std::endl;
 
