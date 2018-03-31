@@ -1065,7 +1065,7 @@ struct serialise : serialise_data
         int length = myfile.tellg();
         myfile.seekg (0, myfile.beg);
 
-        if(length == 0)
+        if(length <= 0)
             return;
 
         data.resize(length);
