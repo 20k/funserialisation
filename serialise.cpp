@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <thread>
+#include <math.h>
 
 uint64_t serialisable::gserialise_id;
 

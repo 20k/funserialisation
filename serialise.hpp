@@ -13,10 +13,13 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <cstring>
+#include <algorithm>
 #ifndef NO_SFML
 #include <SFML/Graphics.hpp>
 #endif
+#ifndef NO_VEC_SUPPORT
 #include <vec/vec.hpp>
+#endif // NO_VEC_SUPPORT
 #include <deque>
 #include <typeinfo>
 #include <optional>
