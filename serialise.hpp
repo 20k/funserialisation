@@ -217,7 +217,8 @@ void lowest_get(T& v, serialise& s, int& internal_counter, std::vector<char>& da
         return;
     }
 
-    v = *std::launder((T*)&data[prev]);
+    memcpy(&v, &data[prev], sizeof(T));
+    //v = *std::launder((T*)&data[prev]);
 }
 
 inline
