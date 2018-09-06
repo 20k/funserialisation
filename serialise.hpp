@@ -352,12 +352,12 @@ struct serialise_helper<T*>
         serialise_helper<serialise_data_type> helper1;
         helper1.get(serialise_id, s);
 
-        serialise_dirty_type dirty;
+        serialise_dirty_type dirty = serialise_dirty_type();
 
         serialise_helper<serialise_dirty_type> helper_dirty;
         helper_dirty.get(dirty, s);
 
-        serialise_attention_type requires_attention;
+        serialise_attention_type requires_attention = serialise_attention_type();
 
         serialise_helper<serialise_attention_type> helper_requires;
         helper_requires.get(requires_attention, s);
@@ -459,7 +459,7 @@ struct serialise_helper<std::vector<T>>
     void get(std::vector<T>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
-        int32_t length;
+        int32_t length = 0;
         helper.get(length, s);
 
         if(length == 0)
@@ -532,7 +532,7 @@ struct serialise_helper<std::deque<T>>
     void get(std::deque<T>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
-        int32_t length;
+        int32_t length = 0;
         helper.get(length, s);
 
         v.resize(length);
@@ -571,7 +571,7 @@ struct serialise_helper<std::map<T, U>>
     void get(std::map<T, U>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
-        int32_t length;
+        int32_t length = 0;
         helper.get(length, s);
 
         for(int i=0; i<length; i++)
@@ -615,7 +615,7 @@ struct serialise_helper<std::unordered_map<T, U>>
     void get(std::unordered_map<T, U>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
-        int32_t length;
+        int32_t length = 0;
         helper.get(length, s);
 
         for(int i=0; i<length; i++)
@@ -656,7 +656,7 @@ struct serialise_helper<std::set<T>>
     void get(std::set<T>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
-        int32_t length;
+        int32_t length = 0;
         helper.get(length, s);
 
         for(int i=0; i<length; i++)
@@ -693,7 +693,7 @@ struct serialise_helper<std::unordered_set<T>>
     void get(std::unordered_set<T>& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
-        int32_t length;
+        int32_t length = 0;
         helper.get(length, s);
 
         for(int i=0; i<length; i++)
@@ -745,7 +745,7 @@ struct serialise_helper<std::string>
     void get(std::string& v, serialise_data& s)
     {
         serialise_helper<int32_t> helper;
-        int32_t length;
+        int32_t length = 0;
         helper.get(length, s);
 
         #ifdef LOOKUP_STRINGS
@@ -816,7 +816,7 @@ struct serialise_helper<std::optional<T>>
     {
         serialise_helper<int32_t> helper;
 
-        int32_t has;
+        int32_t has = 0;
 
         helper.get(has, s);
 
