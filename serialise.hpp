@@ -212,7 +212,7 @@ void lowest_get(T& v, serialise& s, int& internal_counter, std::vector<char>& da
     {
         std::cout << "Error, invalid bytefetch low " << typeid(T).name() << std::endl;
 
-        v = T();
+        //v = T();
 
         return;
     }
