@@ -1047,11 +1047,11 @@ struct serialise : serialise_data
 
         encode_datastream();
 
-        /*auto myfile = std::fstream(file, std::ios::out | std::ios::binary);
+        auto myfile = std::fstream(file, std::ios::out | std::ios::binary);
         myfile.write((char*)&data[0], (int)data.size());
-        myfile.close();*/
+        myfile.close();
 
-        atomic_write_all(file, data);
+        //atomic_write_all(file, data);
     }
 
     void load(const std::string& file)
